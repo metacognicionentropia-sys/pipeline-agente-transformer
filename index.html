@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline de Inferencia Transformer + Agente</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --accent: #38bdf8;
+    --accent2: #a78bfa;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --green: #34d399;
+    --orange: #fb923c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  header {
+    padding: 2rem 1.5rem 1rem;
+    text-align: center;
+    border-bottom: 1px solid #334155;
+  }
+  h1 { margin: 0 0 .5rem; font-size: 1.8rem; }
+  .subtitle { color: var(--muted); font-size: .95rem; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+  .tabs {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: .6rem 1.2rem;
+    background: var(--card);
+    border: 1px solid #334155;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .tab.active { background: var(--accent); color: #0f172a; border-color: var(--accent); font-weight: 600; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .step {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    margin-bottom: .8rem;
+    border-left: 4px solid var(--accent);
+    cursor: pointer;
+    transition: transform .15s, border-color .15s;
+  }
+  .step:hover { transform: translateX(4px); }
+  .step.open { border-left-color: var(--accent2); }
+  .step-header { display: flex; justify-content: space-between; align-items: center; }
+  .step-title { font-weight: 600; }
+  .step-num { background: #334155; padding: .2rem .6rem; border-radius: 999px; font-size: .8rem; }
+  .detail {
+    margin-top: .8rem;
+    padding-top: .8rem;
+    border-top: 1px solid #334155;
+    color: var(--muted);
+    font-size: .92rem;
+    display: none;
+  }
+  .step.open .detail { display: block; }
+  .controls {
+    background: var(--card);
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  label { font-size: .9rem; color: var(--muted); }
+  input[type="range"] { width: 140px; }
+  .token-demo {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: ui-monospace, monospace;
+    margin-top: .5rem;
+  }
+  .flow-arrow { text-align: center; color: var(--accent); font-size: 1.4rem; margin: .3rem 0; }
+  .badge { display: inline-block; padding: .15rem .5rem; border-radius: 4px; font-size: .75rem; margin-left: .4rem; }
+  .badge-agent { background: #065f46; color: var(--green); }
+  .badge-tf { background: #1e3a8a; color: var(--accent); }
+  footer { text-align: center; padding: 2rem; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Pipeline de Inferencia: Agente + Transformer</h1>
+  <div class="subtitle">Integración del flujo agentico externo y la secuencia interna de un Transformer moderno</div>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <div class="tab active" data-panel="agent">Flujo Agente</div>
+    <div class="tab" data-panel="transformer">Secuencia Transformer</div>
+    <div class="tab" data-panel="integrated">Vista Integrada</div>
+    <div class="tab" data-panel="sampling">Sampling Interactivo</div>
+  </div>
+
+  <!-- Panel Agente -->
+  <div id="agent" class="panel active">
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">1. Usuario</span><span class="step-num">Entrada</span></div>
+      <div class="detail">Mensaje del usuario. Puede incluir texto, imágenes o herramientas implícitas.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">2. Filtros de entrada (paralelos)</span><span class="step-num">Seguridad</span></div>
+      <div class="detail">Moderación, detección de jailbreaks, clasificación de intención, rate limiting, validación de esquema. Se ejecutan en paralelo.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">3. Construcción de contexto</span><span class="step-num">Prompt</span></div>
+      <div class="detail">Historial + system prompt + RAG (documentos recuperados) + memoria de largo plazo. Aquí se forma el prompt final que verá el modelo.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">4. Router / Planificador</span><span class="step-num">Decisión</span></div>
+      <div class="detail">Decide: respuesta directa (sin tools) o loop agentico (necesita herramientas, búsqueda, código, etc.).</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">5. Loop agentico (opcional)</span><span class="step-num">N veces</span></div>
+      <div class="detail">LLM ↔ Herramientas / RAG. El modelo decide qué llamar, observa el resultado y repite hasta tener suficiente información o alcanzar el límite de iteraciones.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">6. Filtros de salida + verificador</span><span class="step-num">Calidad</span></div>
+      <div class="detail">Moderación de la respuesta, chequeo de alucinaciones, verificación de hechos cuando es posible, control de calidad.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">7. Postprocesado + formateo</span><span class="step-num">Salida</span></div>
+      <div class="detail">Markdown, citas, cards, imágenes, estructuración final.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">8. Respuesta</span><span class="step-num">Usuario</span></div>
+      <div class="detail">Se entrega al usuario.</div>
+    </div>
+  </div>
+
+  <!-- Panel Transformer -->
+  <div id="transformer" class="panel">
+    <p style="color:var(--muted);margin-top:0">Secuencia fundamental de inferencia de un Transformer moderno (según tus capturas):</p>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">1. Texto</span><span class="step-num">Input</span></div>
+      <div class="detail">Cadena de caracteres de entrada (prompt + contexto).</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">2. Tokens</span><span class="step-num">IDs</span></div>
+      <div class="detail">Tokenización (BPE / SentencePiece). Ejemplo: "Tokyo" → [2435] o subwords.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">3. Embeddings + Positional Encoding</span><span class="step-num">Vectores</span></div>
+      <div class="detail">Cada token ID se convierte en un vector denso. Se suma (o concatena) la información de posición para que el modelo entienda el orden.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">4. Transformer Layers (×N)</span><span class="step-num">Bloques</span></div>
+      <div class="detail">
+        Cada capa contiene:<br>
+        • Multi-Head Self-Attention (Q, K, V → atención causal)<br>
+        • Feed-Forward Network (SwiGLU / GELU)<br>
+        • Residual connections + LayerNorm / RMSNorm<br>
+        Se repite N veces (32, 80, etc.).
+      </div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">5. Hidden States</span><span class="step-num">Representación</span></div>
+      <div class="detail">Representación final del último token (o de todos, según el caso).</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">6. Logits</span><span class="step-num">Vocab</span></div>
+      <div class="detail">Proyección lineal al tamaño del vocabulario (scores sin normalizar).</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">7. Softmax → Probabilidades</span><span class="step-num">Dist</span></div>
+      <div class="detail">Convierte logits en una distribución de probabilidad sobre el vocabulario.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">8. Temperatura + Top-K / Top-P</span><span class="step-num">Filtrado</span></div>
+      <div class="detail">Temperatura controla la aleatoriedad. Top-K y Top-P recortan la cola de la distribución.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">9. Sampling</span><span class="step-num">Selección</span></div>
+      <div class="detail">Se muestrea un token según la distribución filtrada (o greedy si temperatura=0).</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">10. Token generado</span><span class="step-num">Output</span></div>
+      <div class="detail">Se decodifica a texto y se añade al contexto para el siguiente paso autoregresivo.</div>
+    </div>
+  </div>
+
+  <!-- Panel Integrado -->
+  <div id="integrated" class="panel">
+    <p>El <strong>flujo agentico</strong> envuelve al <strong>Transformer</strong>. Cada vez que el agente necesita "pensar", llama internamente a la secuencia de inferencia del modelo.</p>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header">
+        <span class="step-title">Capa externa: Orquestación del Agente</span>
+        <span class="badge badge-agent">Agente</span>
+      </div>
+      <div class="detail">
+        Usuario → Filtros entrada → Construcción de contexto (historial + system + RAG + memoria) → Router → [Loop agentico: LLM ↔ tools] → Filtros salida → Postprocesado → Respuesta
+      </div>
+    </div>
+    <div class="flow-arrow">↓ (cuando el Router decide llamar al modelo)</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header">
+        <span class="step-title">Capa interna: Inferencia del Transformer</span>
+        <span class="badge badge-tf">Modelo</span>
+      </div>
+      <div class="detail">
+        Texto → Tokens → Embeddings + Posicional → Transformer Layers (Multi-Head Attention + FFN) × N → Hidden States → Logits → Softmax → Temperatura/Top-K/Top-P → Sampling → Nuevo Token
+      </div>
+    </div>
+    <div class="flow-arrow">↓ (token(s) generados vuelven al agente)</div>
+    <div class="step" onclick="this.classList.toggle('open')">
+      <div class="step-header"><span class="step-title">Ciclo completo</span></div>
+      <div class="detail">
+        El agente puede invocar al modelo varias veces (una por paso del loop). Cada invocación ejecuta la secuencia completa del Transformer sobre el contexto actualizado (incluyendo resultados de herramientas).
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Sampling -->
+  <div id="sampling" class="panel">
+    <div class="controls">
+      <label>Temperatura: <span id="tempVal">0.7</span></label>
+      <input type="range" id="temp" min="0" max="1.5" step="0.1" value="0.7" oninput="updateDemo()">
+      <label>Top-K: <span id="topkVal">40</span></label>
+      <input type="range" id="topk" min="1" max="100" step="1" value="40" oninput="updateDemo()">
+    </div>
+    <div class="token-demo" id="demo">
+      Prompt: "La capital de Japón es"<br>
+      <strong>Distribución simulada (Top tokens):</strong><br>
+      <div id="probs"></div>
+      <br>
+      Token muestreado: <strong id="sampled">Tokyo</strong>
+    </div>
+    <p style="color:var(--muted);font-size:.9rem">Simulación educativa. Valores ilustrativos, no de un modelo real.</p>
+  </div>
+</div>
+
+<footer>
+  Visualización educativa · Integración de pipeline agentico + inferencia Transformer
+</footer>
+
+<script>
+const tabs = document.querySelectorAll('.tab');
+const panels = document.querySelectorAll('.panel');
+
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    panels.forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.panel).classList.add('active');
+  });
+});
+
+// Demo de sampling
+const baseTokens = [
+  { token: "Tokyo", logit: 4.2 },
+  { token: "Kioto", logit: 2.8 },
+  { token: "Osaka", logit: 2.1 },
+  { token: "Tokio", logit: 1.9 },
+  { token: "Japón", logit: 1.2 },
+  { token: "capital", logit: 0.8 },
+  { token: "es", logit: 0.4 },
+  { token: "la", logit: 0.1 }
+];
+
+function softmax(logits, temp) {
+  const scaled = logits.map(l => l / Math.max(temp, 0.01));
+  const max = Math.max(...scaled);
+  const exps = scaled.map(s => Math.exp(s - max));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map(e => e / sum);
+}
+
+function updateDemo() {
+  const temp = parseFloat(document.getElementById('temp').value);
+  const topk = parseInt(document.getElementById('topk').value);
+  document.getElementById('tempVal').textContent = temp.toFixed(1);
+  document.getElementById('topkVal').textContent = topk;
+
+  let items = [...baseTokens];
+  items.sort((a, b) => b.logit - a.logit);
+  items = items.slice(0, topk);
+
+  const logits = items.map(i => i.logit);
+  const probs = softmax(logits, temp);
+
+  let html = '';
+  items.forEach((item, i) => {
+    const pct = (probs[i] * 100).toFixed(1);
+    html += `<div style="margin:.2rem 0">${item.token.padEnd(10)} ${pct}% <span style="display:inline-block;width:${pct * 2}px;height:8px;background:#38bdf8;border-radius:4px"></span></div>`;
+  });
+  document.getElementById('probs').innerHTML = html;
+
+  // Sampling simple
+  const r = Math.random();
+  let cum = 0;
+  let chosen = items[0].token;
+  for (let i = 0; i < probs.length; i++) {
+    cum += probs[i];
+    if (r <= cum) { chosen = items[i].token; break; }
+  }
+  document.getElementById('sampled').textContent = chosen;
+}
+
+updateDemo();
+</script>
+</body>
+</html>
